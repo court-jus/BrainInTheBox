@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
 class Resource(object):
-    pass
+    _name = "resource"
 
 class Earth(Resource):
-    pass
+    _name = "earth"
 
 class Wood(Resource):
-    pass
+    _name = "wood"

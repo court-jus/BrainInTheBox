@@ -4,6 +4,7 @@ import resources
 
 class Terrain(object):
     ascii_repr = ' '
+    _name = 'terrain'
     resource_types = {}
 
     def __str__(self):
@@ -12,11 +13,21 @@ class Terrain(object):
     def has_resource(self, res_type):
         return self.resource_types.get(res_type, 0)
 
+    def getInfo(self):
+        result  = "%s" % (self._name)
+        if self.resource_types:
+            result += " containing %s" % ", ".join([
+                "%s %s" % (v, k._name)
+                for k, v in self.resource_types.items()])
+        return result
+
 class Sea(Terrain):
     ascii_repr = '~'
+    _name = 'sea'
 
 class Plain(Terrain):
     ascii_repr = '#'
+    _name = 'plain'
     resource_types = {
         resources.Earth: 30,
         }
