@@ -33,7 +33,7 @@ class Map(object):
         with open(mapname, "r") as fp:
             for line in fp:
                 current_line = []
-                for cell in line:
+                for cell in line.rstrip():
                     current_line.append(MapCell(TERRAINS_HASH.get(cell, Terrain)))
                 self.map.append(current_line)
 

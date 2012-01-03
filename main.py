@@ -7,7 +7,7 @@ from textui import TextUI
 
 def main():
     ml = Map("map.txt")
-    ee = EarthExtractor(ml, 20, 10)
+    #ee = EarthExtractor(ml, 20, 10)
     #ml.printmap()
     ui = TextUI(ml)
     ui.run()
