@@ -1,11 +1,16 @@
 # -*- coding: utf-8 -*-
 
 import resources
+import building
 
 class Terrain(object):
     ascii_repr = ' '
     _name = 'terrain'
     resource_types = {}
+    buildable = [building.EarthExtractor, building.WoodExtractor]
+
+    def step(self):
+        pass
 
     def __str__(self):
         return self.ascii_repr
@@ -24,6 +29,7 @@ class Terrain(object):
 class Sea(Terrain):
     ascii_repr = '~'
     _name = 'sea'
+    buildable = []
 
 class Plain(Terrain):
     ascii_repr = '#'

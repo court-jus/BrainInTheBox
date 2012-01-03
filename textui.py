@@ -57,15 +57,20 @@ class MapWidget(urwid.WidgetWrap):
             sys.stderr.flush()
         return key
 
+    def updateText(self):
+        self.display_widget.set_text(self.getText())
+
     def mouse_event(self, size, event, button, x, y, focus):
-        self.selection = x,y
         w, h = self.map.getSize()
         if x >= w or x < 0 or y >= h or y < 0:
             return
-        self.display_widget.set_text(self.getText())
+        self.selection = x,y
+        self.updateText()
         cell = self.map.get_cell(x,y)
         if self.uimd and event == 'mouse press':
             self.uimd.publish(self, ["item selected on map", cell])
+        if cell.canBuild():
+            self.uimd.publish(self, ["buildable", cell])
         if DEBUG_EVENTS:
             sys.stderr.write("UH me %s\n" % ([size, event, button, x, y, focus],))
             sys.stderr.flush()
@@ -85,30 +90,41 @@ class TextUI(object):
         ('selected',    '',     '',     '',     '#dff',     'g31' ),
         ]
 
-    def __init__(self, map):
+    def __init__(self, game):
         uimd = UiMsgDispatcher()
-        self.map = MapWidget(map, uimd)
+        self.game = game
+        self.mapWidget = MapWidget(self.game.map, uimd)
         title = urwid.Text("Brain in the box")
         self.menu = self.generateMenu()
         self.submenu = None
+        self.building_list = urwid.SimpleListWalker([])
         self.informations = InformationsTextWidget("info here")
         uimd.register(self.informations)
         uimd.register(self)
         pile = urwid.Pile([title, self.menu, self.informations])
-        cols = urwid.Columns([self.map, pile])
+        cols = urwid.Columns([self.mapWidget, pile])
         fill = urwid.Filler(cols)
         self.ml = urwid.MainLoop(fill, self.palette, unhandled_input = self.unhandled_input)
         self.ml.screen.set_terminal_properties(colors=256)
+
+    def debug(self, stuff):
+        self.informations.set_text(self.informations.get_text()[0] + "\n" + str(stuff))
 
     def run(self):
         self.ml.run()
 
     def generateMenu(self):
         menuitems = []
-        menuitems.append(urwid.Button("Game"))
+        menuitems.append(urwid.Button("Step", on_press = self.stepCB))
         menuitems.append(urwid.Button("Stock"))
         menuitems.append(urwid.Button("Help"))
-        return urwid.Pile([urwid.Columns(menuitems)])
+        p = [urwid.Columns(menuitems)]
+        return urwid.Pile(p)
+
+    def stepCB(self, button):
+        self.game.map.step()
+        self.mapWidget.updateText()
+        self.debug(self.game.stock)
 
     def unhandled_input(self, input):
         if DEBUG_EVENTS:
@@ -118,13 +134,15 @@ class TextUI(object):
             raise urwid.ExitMainLoop()
         #txt.set_text(repr(input))
 
-    def setSubMenu(self, widget):
+    def setSubMenu(self, widget = None):
         if self.submenu is None and widget is not None:
             self.submenu = widget
             self.menu.widget_list.append(widget)
+            self.menu.item_types.append(('weight',1))
             return
         if self.submenu is not None and widget is None:
-            self.menu.widget_list.pop(-1)
+            self.menu.widget_list.pop()
+            self.menu.item_types.pop()
             self.submenu = None
             return
         if self.submenu is not None and widget is not None:
@@ -132,8 +150,25 @@ class TextUI(object):
                 return
             self.setSubMenu(None)
             self.setSubMenu(widget)
-    def receiveMessage(self, emitter, message):
-        if message[0] == "item selected on map":
-            cell = message[1]
-            self.setSubMenu(urwid.Button("clic"))
 
+    def setBuildMenu(self, button, data):
+        cell = data[0]
+        menuitems = []
+        for buildable in cell.canBuild():
+            menuitems.append(urwid.Button(buildable._name, on_press = self.buildCB, user_data = [cell,buildable,]))
+        p = urwid.Columns(menuitems)
+        self.setSubMenu(p)
+    
+    def buildCB(self, button, data):
+        cell = data[0]
+        cell.build(data[1])
+        self.setSubMenu()
+        self.mapWidget.updateText()
+        
+    def receiveMessage(self, emitter, message):
+        if message[0] == "buildable":
+            cell = message[1]
+            f = urwid.Button("Build", on_press = self.setBuildMenu, user_data = [cell,])
+            self.setSubMenu(f)
+        elif message[0] == "item selected on map":
+            self.setSubMenu()
